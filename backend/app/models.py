@@ -1,8 +1,21 @@
 from pydantic import BaseModel
+from typing import Optional
 
-# TODO: Define your Pydantic models here
-#
-# You'll need:
-# 1. A Todo model with id, title, and completed fields
-# 2. A TodoCreate model for creating new todos (no id needed)
-# 3. A TodoUpdate model for updating todos (all fields optional)
+
+class TodoSerializer(BaseModel):
+    id: int
+    title: str
+    completed: bool
+
+    class Config:
+        from_attributes=True 
+
+
+class TodoCreateSerializer(BaseModel):
+    title: str
+    completed: bool = False
+
+
+class TodoUpdateSerializer(BaseModel):
+    title: Optional[str] = None
+    completed: Optional[bool] = None
