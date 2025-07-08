@@ -25,7 +25,11 @@ This assessment evaluates your ability to build a RESTful API using FastAPI. You
    ```bash
    uv sync
    ```
-3. Run the development server:
+3. Prevent missing dependencies:
+  ````
+  uv pip install -r requirements.txt
+  ```
+4. Run the development server:
    ```bash
    uv run uvicorn app.main:app --reload
    ```
