@@ -41,13 +41,13 @@ export default function TodoItem({
         <div className="flex gap-2">
           <button
             onClick={() => onEdit(todo)}
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 hover:underline cursor-pointer"
           >
             <Icon icon="mynaui:edit-one" width="20" height="20" />
           </button>
           <button
             onClick={() => onDelete(todo.id)}
-            className="text-red-500 hover:underline"
+            className="text-red-500 hover:underline cursor-pointer"
           >
             <Icon icon="ic:baseline-delete-outline" width="20" height="20" />
           </button>

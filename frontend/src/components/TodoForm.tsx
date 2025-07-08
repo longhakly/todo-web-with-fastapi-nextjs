@@ -41,7 +41,7 @@ export default function TodoForm({
         <span className="text-red-800 text-xs">{errorMessage("title")}</span>
       </div>
       <button
-        className="bg-[#1d3557] text-white px-4 py-2 rounded-lg hover:bg-[#457b9d] flex items-center justify-center gap-2 min-w-[80px]"
+        className="bg-[#1d3557] text-white px-4 py-2 rounded-lg hover:bg-[#457b9d] flex items-center justify-center gap-2 min-w-[80px] cursor-pointer"
         onClick={onSubmit}
         disabled={loading}
       >
