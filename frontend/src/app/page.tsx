@@ -1,102 +1,190 @@
-import Image from "next/image";
+"use client";
+import { useState, useEffect } from "react";
+import {
+  TodoInterface,
+  TodoCreateInterface,
+  TodoUpdateInterface,
+} from "@/interfaces/todo";
+import { TodoService } from "@/services/todo";
+import { ErrorInterface } from "@/interfaces/errors";
+import { Icon } from '@iconify/react';
+
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [todos, setTodos] = useState<TodoInterface[]>([]);
+  const [input, setInput] = useState("");
+  const [editId, setEditId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<ErrorInterface | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  useEffect(() => {
+    async function fetchTodos() {
+      setLoading(true);
+      try {
+        const data = await TodoService.getAll();
+        setTodos(data);
+      } catch (error) {
+        console.error("Failed to fetch todos:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTodos();
+  }, []);
+
+  const handleAdd = async () => {
+    setErrors(null);
+    if (editId !== null) {
+      try {
+        const updatedTodo: TodoUpdateInterface = { title: input.trim() };
+        const updated = await TodoService.update(editId, updatedTodo);
+        setTodos(todos.map((t) => (t.id === editId ? updated : t)));
+        setEditId(null);
+        setInput("");
+      } catch (error: any) {
+        if (error.response && error.response.data) {
+          setErrors(error.response.data);
+          setInput("");
+          setEditId(null);
+        }
+      }
+    } else {
+      try {
+        const newTodo: TodoCreateInterface = {
+          title: input.trim(),
+          completed: false,
+        };
+        const created = await TodoService.create(newTodo);
+        setTodos([created, ...todos]);
+        setInput("");
+      } catch (error: any) {
+        if (error.response && error.response.data) {
+          setErrors(error.response.data);
+        }
+      }
+    }
+  };
+
+  const handleToggle = async (id: number) => {
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return;
+    try {
+      const updated = await TodoService.update(id, {
+        completed: !todo.completed,
+      });
+      setTodos(todos.map((t) => (t.id === id ? updated : t)));
+    } catch (error) {
+      console.error("Failed to toggle todo:", error);
+    }
+  };
+
+  function errorMessage(key: string) {
+    if (errors && errors.errors && errors.errors.length > 0) {
+      return errors.errors.find((error) => error.key === key)?.detail || "";
+    }
+  }
+
+  const handleEdit = (todo: TodoInterface) => {
+    setEditId(todo.id);
+    setInput(todo.title);
+    setErrors(null);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await TodoService.delete(id);
+      setTodos(todos.filter((t) => t.id !== id));
+    } catch (error) {
+      console.error("Failed to delete todo:", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen grid grid-rows-[auto_1fr_auto] gap-8 p-6 sm:p-12 bg-gray-50 font-sans">
+      <header className="text-center">
+        <h1 className="xs:2xl sm:2xl lg:text-3xl text-gray-600 font-bold">
+          Todo Simple
+        </h1>
+      </header>
+
+      <main className="w-full max-w-xl mx-auto flex flex-col gap-6">
+        <div className="relative flex gap-2">
+          <input
+            className="relative flex-grow border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-1 focus:ring-[#1d3557]"
+            placeholder="Enter a task..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            disabled={loading}
+          />
+          <div className="absolute top-[-10px] px-2 left-2 bg-gray-50 rounded-sm">
+            <span className="text-red-800 text-xs">
+              {errorMessage("title")}
+            </span>
+          </div>
+          <button
+            className="bg-[#1d3557] text-white px-4 py-2 rounded-lg hover:bg-[#457b9d]"
+            onClick={handleAdd}
+            disabled={loading}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {editId !== null ? "Update" : "Add"}
+          </button>
         </div>
+        {loading ? (
+          <p className="text-center">Loading...</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {todos.map((todo) => (
+              <li
+                key={todo.id}
+                className={`${
+                  editId == todo.id
+                    ? "flex items-center justify-between bg-white border-1 border-[#457b9d]  p-4 rounded shadow"
+                    : "flex items-center justify-between bg-white p-4 rounded shadow"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={todo.completed}
+                    onChange={() => handleToggle(todo.id)}
+                  />
+                  <span
+                    className={`${
+                      todo.completed
+                        ? "line-through text-gray-400"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    <p className="text-sm">
+                      {todo.title}
+                    </p>
+                  </span>
+                </div>
+                {todo.id != editId ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(todo)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      <Icon icon="mynaui:edit-one" width="20" height="20" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(todo.id)}
+                      className="text-red-500 hover:underline"
+                    >
+                      <Icon icon="ic:baseline-delete-outline" width="20" height="20" />
+                    </button>
+                  </div>
+                ) : <p className="text-sm text-[#457b9d]">Editing</p>}
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      <footer className="text-center text-sm text-gray-400">
+        &copy; 2025 Todo Simple
       </footer>
     </div>
   );
