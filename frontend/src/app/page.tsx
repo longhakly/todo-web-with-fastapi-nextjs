@@ -7,8 +7,8 @@ import {
 } from "@/interfaces/todo";
 import { TodoService } from "@/services/todo";
 import { ErrorInterface } from "@/interfaces/errors";
-import { Icon } from '@iconify/react';
-
+import TodoItem from "@/components/TodoItem";
+import TodoForm from "@/components/TodoForm";
 
 export default function Home() {
   const [todos, setTodos] = useState<TodoInterface[]>([]);
@@ -16,6 +16,7 @@ export default function Home() {
   const [editId, setEditId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<ErrorInterface | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     async function fetchTodos() {
@@ -32,35 +33,38 @@ export default function Home() {
     fetchTodos();
   }, []);
 
-  const handleAdd = async () => {
+  const handleCreateUpdate = async () => {
     setErrors(null);
+    setActionLoading(true);
+
     if (editId !== null) {
       try {
-        const updatedTodo: TodoUpdateInterface = { title: input.trim() };
-        const updated = await TodoService.update(editId, updatedTodo);
-        setTodos(todos.map((t) => (t.id === editId ? updated : t)));
+        const updateData: TodoUpdateInterface = { title: input.trim() };
+        const result: TodoInterface = await TodoService.update(
+          editId,
+          updateData
+        );
+        setTodos(todos.map((t) => (t.id === editId ? result : t)));
         setEditId(null);
         setInput("");
       } catch (error: any) {
-        if (error.response && error.response.data) {
-          setErrors(error.response.data);
-          setInput("");
-          setEditId(null);
-        }
+        setErrors(error.response?.data || null);
+      } finally {
+        setActionLoading(false);
       }
     } else {
       try {
-        const newTodo: TodoCreateInterface = {
+        const createData: TodoCreateInterface = {
           title: input.trim(),
           completed: false,
         };
-        const created = await TodoService.create(newTodo);
+        const created: TodoInterface = await TodoService.create(createData);
         setTodos([created, ...todos]);
         setInput("");
       } catch (error: any) {
-        if (error.response && error.response.data) {
-          setErrors(error.response.data);
-        }
+        setErrors(error.response?.data || null);
+      } finally {
+        setActionLoading(false);
       }
     }
   };
@@ -73,16 +77,10 @@ export default function Home() {
         completed: !todo.completed,
       });
       setTodos(todos.map((t) => (t.id === id ? updated : t)));
-    } catch (error) {
-      console.error("Failed to toggle todo:", error);
+    } catch (err) {
+      console.error("Toggle error", err);
     }
   };
-
-  function errorMessage(key: string) {
-    if (errors && errors.errors && errors.errors.length > 0) {
-      return errors.errors.find((error) => error.key === key)?.detail || "";
-    }
-  }
 
   const handleEdit = (todo: TodoInterface) => {
     setEditId(todo.id);
@@ -94,90 +92,40 @@ export default function Home() {
     try {
       await TodoService.delete(id);
       setTodos(todos.filter((t) => t.id !== id));
-    } catch (error) {
-      console.error("Failed to delete todo:", error);
+    } catch (err) {
+      console.error("Delete error", err);
     }
   };
 
   return (
     <div className="min-h-screen grid grid-rows-[auto_1fr_auto] gap-8 p-6 sm:p-12 bg-gray-50 font-sans">
       <header className="text-center">
-        <h1 className="xs:2xl sm:2xl lg:text-3xl text-gray-600 font-bold">
-          Todo Simple
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-600">Todo Simple</h1>
       </header>
 
       <main className="w-full max-w-xl mx-auto flex flex-col gap-6">
-        <div className="relative flex gap-2">
-          <input
-            className="relative flex-grow border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-1 focus:ring-[#1d3557]"
-            placeholder="Enter a task..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            disabled={loading}
-          />
-          <div className="absolute top-[-10px] px-2 left-2 bg-gray-50 rounded-sm">
-            <span className="text-red-800 text-xs">
-              {errorMessage("title")}
-            </span>
-          </div>
-          <button
-            className="bg-[#1d3557] text-white px-4 py-2 rounded-lg hover:bg-[#457b9d]"
-            onClick={handleAdd}
-            disabled={loading}
-          >
-            {editId !== null ? "Update" : "Add"}
-          </button>
-        </div>
+        <TodoForm
+          input={input}
+          setInput={setInput}
+          onSubmit={handleCreateUpdate}
+          isEditing={editId !== null}
+          loading={loading}
+          errors={errors}
+          actionLoading={actionLoading}
+        />
         {loading ? (
           <p className="text-center">Loading...</p>
         ) : (
           <ul className="flex flex-col gap-4">
             {todos.map((todo) => (
-              <li
+              <TodoItem
                 key={todo.id}
-                className={`${
-                  editId == todo.id
-                    ? "flex items-center justify-between bg-white border-1 border-[#457b9d]  p-4 rounded shadow"
-                    : "flex items-center justify-between bg-white p-4 rounded shadow"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={todo.completed}
-                    onChange={() => handleToggle(todo.id)}
-                  />
-                  <span
-                    className={`${
-                      todo.completed
-                        ? "line-through text-gray-400"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    <p className="text-sm">
-                      {todo.title}
-                    </p>
-                  </span>
-                </div>
-                {todo.id != editId ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(todo)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      <Icon icon="mynaui:edit-one" width="20" height="20" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(todo.id)}
-                      className="text-red-500 hover:underline"
-                    >
-                      <Icon icon="ic:baseline-delete-outline" width="20" height="20" />
-                    </button>
-                  </div>
-                ) : <p className="text-sm text-[#457b9d]">Editing</p>}
-              </li>
+                todo={todo}
+                onToggle={handleToggle}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                editId={editId}
+              />
             ))}
           </ul>
         )}
